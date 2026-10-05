@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/electricity-demand-prediction/"
+title = "Electricity Consumption Analysis and Demand Prediction"
+description = "An academic big-data analytics platform for uploading electricity consumption datasets, exploring usage patterns, processing data with PySpark, and training models to predict demand."
+version = "1.0.0"
+id = "artifacts/electricity-demand-prediction"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/electricity-demand-prediction/" ]
+localPort = 20713
+
+[services.development]
+run = "pnpm --filter @workspace/electricity-demand-prediction run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/electricity-demand-prediction", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/electricity-demand-prediction/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "20713"
+BASE_PATH = "/electricity-demand-prediction/"

@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: electricity
+    description: Electricity dataset analysis and demand prediction
 paths:
   /healthz:
     get:
@@ -24,6 +26,207 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /electricity/dataset-info:
+    get:
+      operationId: getElectricityDatasetInfo
+      tags: [electricity]
+      summary: Get uploaded dataset metadata and profiling information
+      responses:
+        "200":
+          description: Dataset information
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DatasetInfo"
+  /electricity/dataset-preview:
+    get:
+      operationId: getElectricityDatasetPreview
+      tags: [electricity]
+      summary: Get a preview of the current dataset
+      parameters:
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        "200":
+          description: Preview rows and column names
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DatasetPreview"
+  /electricity/upload:
+    post:
+      operationId: uploadElectricityDataset
+      tags: [electricity]
+      summary: Upload a CSV dataset and profile its contents
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CsvDatasetInput"
+      responses:
+        "200":
+          description: Uploaded dataset metadata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DatasetInfo"
+        "400":
+          description: Invalid or unsupported CSV dataset
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /electricity/statistics:
+    get:
+      operationId: getElectricityStatistics
+      tags: [electricity]
+      summary: Get dataset summary statistics and KPI values
+      responses:
+        "200":
+          description: Summary statistics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatisticsResponse"
+  /electricity/consumption-analysis:
+    get:
+      operationId: getElectricityConsumptionAnalysis
+      tags: [electricity]
+      summary: Get grouped demand series for dashboard visualizations
+      parameters:
+        - in: query
+          name: start_date
+          schema: { type: string, format: date }
+        - in: query
+          name: end_date
+          schema: { type: string, format: date }
+        - in: query
+          name: month
+          schema: { type: integer, minimum: 1, maximum: 12 }
+        - in: query
+          name: year
+          schema: { type: integer }
+        - in: query
+          name: hour
+          schema: { type: integer, minimum: 0, maximum: 23 }
+        - in: query
+          name: day_of_week
+          schema: { type: integer, minimum: 0, maximum: 6 }
+      responses:
+        "200":
+          description: Grouped consumption series
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalysisResponse"
+  /electricity/peak-demand:
+    get:
+      operationId: getElectricityPeakDemand
+      tags: [electricity]
+      summary: Get peak and minimum demand periods
+      responses:
+        "200":
+          description: Peak and minimum observations
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PeakDemandResponse"
+  /electricity/monthly-consumption:
+    get:
+      operationId: getElectricityMonthlyConsumption
+      tags: [electricity]
+      summary: Get monthly consumption totals
+      responses:
+        "200":
+          description: Monthly consumption
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GroupedSeriesResponse"
+  /electricity/hourly-consumption:
+    get:
+      operationId: getElectricityHourlyConsumption
+      tags: [electricity]
+      summary: Get hourly average consumption
+      responses:
+        "200":
+          description: Hourly consumption
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GroupedSeriesResponse"
+  /electricity/train-model:
+    post:
+      operationId: trainElectricityModel
+      tags: [electricity]
+      summary: Train and compare demand prediction models
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TrainModelInput"
+      responses:
+        "200":
+          description: Model comparison and selected best model
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModelPerformance"
+  /electricity/model-performance:
+    get:
+      operationId: getElectricityModelPerformance
+      tags: [electricity]
+      summary: Get model comparison metrics and prediction samples
+      responses:
+        "200":
+          description: Model performance
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModelPerformance"
+  /electricity/predict:
+    post:
+      operationId: predictElectricityDemand
+      tags: [electricity]
+      summary: Predict demand for a selected date and hour
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DemandPredictionInput"
+      responses:
+        "200":
+          description: Predicted consumption
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DemandPrediction"
+        "409":
+          description: Train a model before requesting a prediction
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /electricity/spark-info:
+    get:
+      operationId: getElectricitySparkInfo
+      tags: [electricity]
+      summary: Describe the configured large-data processing path
+      responses:
+        "200":
+          description: Spark availability and processing configuration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SparkInfo"
 components:
   schemas:
     HealthStatus:
@@ -33,4 +236,187 @@ components:
           type: string
       required:
         - status
+    ErrorResponse:
+      type: object
+      properties:
+        detail: { type: string }
+      required: [detail]
+    CsvDatasetInput:
+      type: object
+      properties:
+        filename: { type: string, minLength: 1 }
+        csv_text: { type: string, minLength: 1 }
+      required: [filename, csv_text]
+    DatasetInfo:
+      type: object
+      properties:
+        filename: { type: string }
+        source: { type: string }
+        rows: { type: integer }
+        column_count: { type: integer }
+        columns:
+          type: array
+          items: { type: string }
+        data_types:
+          type: object
+          additionalProperties: { type: string }
+        missing_values:
+          type: object
+          additionalProperties: { type: integer }
+        duplicate_rows: { type: integer }
+        target_column: { type: ["string", "null"] }
+        datetime_column: { type: ["string", "null"] }
+        units: { type: string }
+        summary:
+          type: object
+          additionalProperties: { type: number }
+      required: [filename, source, rows, column_count, columns, data_types, missing_values, duplicate_rows, target_column, datetime_column, units, summary]
+    PreviewRow:
+      type: object
+      additionalProperties: { type: ["string", "null"] }
+    DatasetPreview:
+      type: object
+      properties:
+        columns:
+          type: array
+          items: { type: string }
+        rows:
+          type: array
+          items: { $ref: "#/components/schemas/PreviewRow" }
+        total_rows: { type: integer }
+      required: [columns, rows, total_rows]
+    StatisticsResponse:
+      type: object
+      properties:
+        total_consumption: { type: number }
+        average_consumption: { type: number }
+        peak_demand: { type: number }
+        minimum_demand: { type: number }
+        predicted_next_demand: { type: ["number", "null"] }
+        target_column: { type: string }
+        units: { type: string }
+        rows_after_cleaning: { type: integer }
+        missing_values_filled: { type: integer }
+        duplicates_removed: { type: integer }
+      required: [total_consumption, average_consumption, peak_demand, minimum_demand, predicted_next_demand, target_column, units, rows_after_cleaning, missing_values_filled, duplicates_removed]
+    SeriesPoint:
+      type: object
+      properties:
+        label: { type: string }
+        value: { type: number }
+      required: [label, value]
+    GroupedSeriesResponse:
+      type: object
+      properties:
+        series:
+          type: array
+          items: { $ref: "#/components/schemas/SeriesPoint" }
+        units: { type: string }
+      required: [series, units]
+    AnalysisResponse:
+      type: object
+      properties:
+        trend:
+          type: array
+          items: { $ref: "#/components/schemas/SeriesPoint" }
+        daily:
+          type: array
+          items: { $ref: "#/components/schemas/SeriesPoint" }
+        weekly:
+          type: array
+          items: { $ref: "#/components/schemas/SeriesPoint" }
+        monthly:
+          type: array
+          items: { $ref: "#/components/schemas/SeriesPoint" }
+        hourly:
+          type: array
+          items: { $ref: "#/components/schemas/SeriesPoint" }
+        weekday_weekend:
+          type: array
+          items: { $ref: "#/components/schemas/SeriesPoint" }
+        seasonal:
+          type: array
+          items: { $ref: "#/components/schemas/SeriesPoint" }
+        distribution:
+          type: array
+          items: { $ref: "#/components/schemas/SeriesPoint" }
+        correlation:
+          type: object
+          additionalProperties: { type: number }
+        units: { type: string }
+      required: [trend, daily, weekly, monthly, hourly, weekday_weekend, seasonal, distribution, correlation, units]
+    PeakDemandResponse:
+      type: object
+      properties:
+        peak_timestamp: { type: string }
+        peak_demand: { type: number }
+        minimum_timestamp: { type: string }
+        minimum_demand: { type: number }
+        top_peaks:
+          type: array
+          items: { $ref: "#/components/schemas/SeriesPoint" }
+        units: { type: string }
+      required: [peak_timestamp, peak_demand, minimum_timestamp, minimum_demand, top_peaks, units]
+    TrainModelInput:
+      type: object
+      properties:
+        use_spark: { type: boolean, default: false }
+      required: [use_spark]
+    ModelMetric:
+      type: object
+      properties:
+        model: { type: string }
+        mae: { type: number }
+        mse: { type: number }
+        rmse: { type: number }
+        r2: { type: number }
+      required: [model, mae, mse, rmse, r2]
+    PredictionPoint:
+      type: object
+      properties:
+        timestamp: { type: string }
+        actual: { type: number }
+        predicted: { type: number }
+      required: [timestamp, actual, predicted]
+    ModelPerformance:
+      type: object
+      properties:
+        trained: { type: boolean }
+        best_model: { type: ["string", "null"] }
+        metrics:
+          type: array
+          items: { $ref: "#/components/schemas/ModelMetric" }
+        actual_vs_predicted:
+          type: array
+          items: { $ref: "#/components/schemas/PredictionPoint" }
+        feature_names:
+          type: array
+          items: { type: string }
+        training_rows: { type: integer }
+        units: { type: string }
+        spark_used: { type: boolean }
+      required: [trained, best_model, metrics, actual_vs_predicted, feature_names, training_rows, units, spark_used]
+    DemandPredictionInput:
+      type: object
+      properties:
+        timestamp: { type: string, format: date-time }
+        temperature: { type: ["number", "null"] }
+        recent_consumption: { type: ["number", "null"] }
+      required: [timestamp]
+    DemandPrediction:
+      type: object
+      properties:
+        timestamp: { type: string }
+        predicted_demand: { type: number }
+        units: { type: string }
+        model: { type: string }
+      required: [timestamp, predicted_demand, units, model]
+    SparkInfo:
+      type: object
+      properties:
+        available: { type: boolean }
+        version: { type: ["string", "null"] }
+        processing_mode: { type: string }
+        details: { type: string }
+      required: [available, version, processing_mode, details]
 
